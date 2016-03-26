@@ -61,28 +61,34 @@ public final class XOptional<T> {
     }
 
     /**
-     * Returns an {@code XOptional} with the specified present non-null value.
+     * Returns {@code XOptional} with the specified present non-null value.
      *
      * @param <T> the class of the value
      * @param value the value to be present, which must be non-null
-     * @return an {@code XOptional} with the value present
+     * @return {@code XOptional} with the value present
      * @throws NullPointerException if value is null
      */
     public static <T> XOptional<T> of(T value) {
         return new XOptional<>(value);
     }
 
-    public static <T> XOptional<T> cast(Optional<T> value) {
-        return value.map(XOptional::of).orElse(empty());
+    /**
+     * Transforms {@code Optional} into {@code XOptional}
+     * @param optional optional to be transformed
+     * @param <T> the class of the value
+     * @return {@code XOptional} built from a given {@code Optional}
+     */
+    public static <T> XOptional<T> from(Optional<T> optional) {
+        return optional.map(XOptional::of).orElse(empty());
     }
 
     /**
-     * Returns an {@code XOptional} describing the specified value, if non-null,
+     * Returns {@code XOptional} describing the specified value, if non-null,
      * otherwise returns an empty {@code XOptional}.
      *
      * @param <T> the class of the value
      * @param value the possibly-null value to describe
-     * @return an {@code XOptional} with a present value if the specified value
+     * @return {@code XOptional} with a present value if the specified value
      * is non-null, otherwise an empty {@code XOptional}
      */
     public static <T> XOptional<T> ofNullable(T value) {
@@ -122,18 +128,22 @@ public final class XOptional<T> {
      * @throws NullPointerException if value is present and {@code consumer} is
      * null
      */
-    public void ifPresent(Consumer<? super T> consumer) {
-        if (value != null)
+    public Condition ifPresent(Consumer<? super T> consumer) {
+        if (value != null) {
             consumer.accept(value);
+            return Condition.present();
+        } else {
+            return Condition.absent();
+        }
     }
 
     /**
      * If a value is present, and the value matches the given predicate,
-     * return an {@code XOptional} describing the value, otherwise return an
+     * return {@code XOptional} describing the value, otherwise return an
      * empty {@code XOptional}.
      *
      * @param predicate a predicate to apply to the value, if present
-     * @return an {@code XOptional} describing the value of this {@code XOptional}
+     * @return {@code XOptional} describing the value of this {@code XOptional}
      * if a value is present and the value matches the given predicate,
      * otherwise an empty {@code XOptional}
      * @throws NullPointerException if the predicate is null
@@ -148,7 +158,7 @@ public final class XOptional<T> {
 
     /**
      * If a value is present, apply the provided mapping function to it,
-     * and if the result is non-null, return an {@code XOptional} describing the
+     * and if the result is non-null, return {@code XOptional} describing the
      * result.  Otherwise return an empty {@code XOptional}.
      *
      * @apiNote This method supports post-processing on XOptional values, without
@@ -164,23 +174,23 @@ public final class XOptional<T> {
      *                       .map(name -> new FileInputStream(name));
      * }</pre>
      *
-     * Here, {@code findFirst} returns an {@code XOptional<String>}, and then
-     * {@code map} returns an {@code XOptional<FileInputStream>} for the desired
+     * Here, {@code findFirst} returns {@code XOptional<String>}, and then
+     * {@code map} returns {@code XOptional<FileInputStream>} for the desired
      * file if one exists.
      *
      * @param <U> The type of the result of the mapping function
      * @param mapper a mapping function to apply to the value, if present
-     * @return an {@code XOptional} describing the result of applying a mapping
+     * @return {@code XOptional} describing the result of applying a mapping
      * function to the value of this {@code XOptional}, if a value is present,
      * otherwise an empty {@code XOptional}
      * @throws NullPointerException if the mapping function is null
      */
     public<U, X extends Exception> XOptional<U> map(XFunction<? super T, ? extends U, X> mapper) throws X {
         Objects.requireNonNull(mapper);
-        if (!isPresent())
-            return empty();
-        else {
+        if (isPresent()) {
             return XOptional.ofNullable(mapper.apply(value));
+        } else {
+            return empty();
         }
     }
 
@@ -188,14 +198,14 @@ public final class XOptional<T> {
      * If a value is present, apply the provided {@code XOptional}-bearing
      * mapping function to it, return that result, otherwise return an empty
      * {@code XOptional}.  This method is similar to {@link #map(XFunction)},
-     * but the provided mapper is one whose result is already an {@code XOptional},
+     * but the provided mapper is one whose result is already {@code XOptional},
      * and if invoked, {@code flatMap} does not wrap it with an additional
      * {@code XOptional}.
      *
      * @param <U> The type parameter to the {@code XOptional} returned by
      * @param mapper a mapping function to apply to the value, if present
      *           the mapping function
-     * @return the result of applying an {@code XOptional}-bearing mapping
+     * @return the result of applying {@code XOptional}-bearing mapping
      * function to the value of this {@code XOptional}, if a value is present,
      * otherwise an empty {@code XOptional}
      * @throws NullPointerException if the mapping function is null or returns
@@ -259,7 +269,7 @@ public final class XOptional<T> {
      * Indicates whether some other object is "equal to" this XOptional. The
      * other object is considered equal if:
      * <ul>
-     * <li>it is also an {@code XOptional} and;
+     * <li>it is also {@code XOptional} and;
      * <li>both instances have no value present or;
      * <li>the present values are "equal to" each other via {@code equals()}.
      * </ul>
@@ -272,14 +282,12 @@ public final class XOptional<T> {
     public boolean equals(Object obj) {
         if (this == obj) {
             return true;
-        }
-
-        if (!(obj instanceof XOptional)) {
+        } else if ((obj instanceof XOptional)) {
+            XOptional<?> other = (XOptional<?>) obj;
+            return Objects.equals(value, other.value);
+        } else {
             return false;
         }
-
-        XOptional<?> other = (XOptional<?>) obj;
-        return Objects.equals(value, other.value);
     }
 
     /**
@@ -306,8 +314,6 @@ public final class XOptional<T> {
      */
     @Override
     public String toString() {
-        return value != null
-                ? String.format("XOptional[%s]", value)
-                : "XOptional.empty";
+        return value != null ? String.format("XOptional[%s]", value) : "XOptional.empty";
     }
 }

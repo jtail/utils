@@ -3,8 +3,6 @@ package com.github.jtail.utils.xfn;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -128,7 +126,7 @@ public final class XOptional<T> {
      * @throws NullPointerException if value is present and {@code consumer} is
      * null
      */
-    public Condition ifPresent(Consumer<? super T> consumer) {
+    public <X extends Exception> Condition ifPresent(XConsumer<? super T, X> consumer) throws X {
         if (value != null) {
             consumer.accept(value);
             return Condition.present();
@@ -150,10 +148,7 @@ public final class XOptional<T> {
      */
     public XOptional<T> filter(Predicate<? super T> predicate) {
         Objects.requireNonNull(predicate);
-        if (!isPresent())
-            return this;
-        else
-            return predicate.test(value) ? this : empty();
+        return isPresent() ? predicate.test(value) ? this : empty() : this;
     }
 
     /**
@@ -185,13 +180,9 @@ public final class XOptional<T> {
      * otherwise an empty {@code XOptional}
      * @throws NullPointerException if the mapping function is null
      */
-    public<U, X extends Exception> XOptional<U> map(XFunction<? super T, ? extends U, X> mapper) throws X {
+    public <U, X extends Exception> XOptional<U> map(XFunction<? super T, ? extends U, X> mapper) throws X {
         Objects.requireNonNull(mapper);
-        if (isPresent()) {
-            return XOptional.ofNullable(mapper.apply(value));
-        } else {
-            return empty();
-        }
+        return isPresent() ? XOptional.ofNullable(mapper.apply(value)) : empty();
     }
 
     /**
@@ -211,7 +202,7 @@ public final class XOptional<T> {
      * @throws NullPointerException if the mapping function is null or returns
      * a null result
      */
-    public<U> XOptional<U> flatMap(Function<? super T, XOptional<U>> mapper) {
+    public <U, X extends Exception> XOptional<U> flatMap(XFunction<? super T, XOptional<U>, X> mapper) throws X {
         Objects.requireNonNull(mapper);
         return isPresent() ? Objects.requireNonNull(mapper.apply(value)) : empty();
     }
